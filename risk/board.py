@@ -112,6 +112,15 @@ class Board(object):
             bool: True if the input path is valid
         '''
 
+        val = True
+        for i in path:
+            if not i:
+                return True
+            else:
+                val &= path[0] not in path[1:]
+                val &= path[1] in risk.definitions.territory_neighbors[path[0]]
+                val &= self.is-valid-path(path[1:])
+                return val
     
     def is_valid_attack_path(self, path):
         '''
