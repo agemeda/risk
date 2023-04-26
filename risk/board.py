@@ -8,24 +8,16 @@ from matplotlib.path import Path
 
 import risk.definitions
 
+from collections import deque
+from queue import PriorityQueue
+import copy
+
 Territory = namedtuple('Territory', ['t_id', 'p_id', 'armies'])
 Move = namedtuple('Attack', ['from_t_id', 'from_armies', 'to_t_id', 'to_p_id', 'to_armies'])
 
 
 class Board(object):
     """
-    The Board object keeps track of all armies situated on the Risk
-    world map. Through the definitions it knows the locations of and
-    connections between all territories. It handles ownership, attacks
-    and movements of armies.
-
-    Args:
-        data (list): a sorted list of tuples describing the state of the
-            board, each containing three values:
-            - tid (int): the territory id of a territory,
-            - pid (int): the player id of the owner of the territory,
-            - n_armies (int): the number of armies on the territory.
-            The list is sorted by the tid, and should be complete.
     """
 
     def __init__(self, data):
@@ -34,13 +26,7 @@ class Board(object):
     @classmethod
     def create(cls, n_players):
         """
-        Create a Board and randomly allocate the territories. Place one army on each territory.
         
-        Args:
-            n_players (int): Number of players.
-                
-        Returns:
-            Board: A board with territories randomly allocated to the players.
         """
         allocation = (list(range(n_players)) * 42)[0:42]
         random.shuffle(allocation)
@@ -52,21 +38,12 @@ class Board(object):
 
     def neighbors(self, t_id):
         """
-        Create a generator of all territories neighboring a given territory.
-            
-        Args:
-            t_id (int): ID of the territory to find neighbors of.
-
-        Returns:
-            generator: Generator of Territories.
         """
         n_ids = risk.definitions.territory_neighbors[t_id]
         return (t for t in self.data if t.t_id in n_ids)
 
     def hostile_neighbors(self, t_id):
         """
-        Create a generator of all territories neighboring a given territory, of which
-        the owner is not the same as the owner of the original territory.
             
         Args:
             t_id (int): ID of the territory.
@@ -80,14 +57,6 @@ class Board(object):
 
     def friendly_neighbors(self, t_id):
         """
-        Create a generator of all territories neighboring a given territory, of which
-        the owner is the same as the owner of the original territory.
-
-        Args:
-            t_id (int): ID of the territory.
-
-        Returns:
-            generator: Generator of tuples of the form (t_id, p_id, armies).
         """
         p_id = self.owner(t_id)
         n_ids = risk.definitions.territory_neighbors[t_id]
@@ -100,16 +69,6 @@ class Board(object):
 
     def is_valid_path(self, path):
         '''
-        A path is list of territories satisfying two conditions:
-        1. For all territories V in the list (except the last one), the next territory W is in the neighbors if V.
-        2. No territory is repeated multiple times.
-        Valid paths can be of any length (including 0 and 1).
-
-        Args:
-            path ([int]): a list of t_ids which represent the path
-
-        Returns:
-            bool: True if the input path is valid
         '''
 
         val = True
@@ -124,93 +83,140 @@ class Board(object):
     
     def is_valid_attack_path(self, path):
         '''
-        The rules of Risk state that when attacking, 
-        a player's armies cannot move through territories they already occupy;
-        they must move through enemy territories.
-            bool: True if the path is an attack path
         '''
         val = self.is_valid_path(path)
         if len(path) < 2:
             return False
         else:
-            for t_id in path[1:]:
+            for i in path[1:]:
                 val &= self.owner(t_id) != self.owner(path[0])
             return val
 
 
     def cost_of_attack_path(self, path):
         '''
-        The cost of an attack path is the total number of enemy armies in the path.
-        In other words, it is the total number of armies in the subpath starting at the second vertex.
-
-        Args:
-            path ([int]): a list of t_ids which must be a valid attack path
-
-        Returns:
-            bool: the number of enemy armies in the path
         '''
     val = 0
-    for 
+
+    if self.is_valid_attack_path(path) is True:
+        for t_id in path[1:]:
+            val += self.data[t_id].armies
+        return val
 
     def shortest_path(self, source, target):
         '''
-        This function uses BFS to find the shortest path between source and target.
-        This function does not take into account who owns the territories or how many armies are on the territories,
-        and so a shortest path is simply a valid path with the smallest number of territories visited.
-        This path is not necessarily unique,
-        and when multiple shortest paths exist,
-        then this function can return any of those paths.
-
-        Args:
-            source (int): a t_id that is the source location
-            target (int): a t_id that is the target location
-
-        Returns:
-            [int]: a valid path between source and target that has minimum length; this path is guaranteed to exist
         '''
 
+        dictionary = {}
+        dictionary[source] = [source]
+        queue = deque()
+        queue.append(source)
+        visited = set()
+        visited.add(source)
+        
+        while queue:
+            current_territory = queue.popleft()
+            if current_territory == target:
+                return dictionary[current_territory]
+            for territory in risk.definitions.territory_neighbors[current_territory]:
+                if territory not in visited:
+                    pathcopy = copy.deepcopy(dictionary[current_territory])
+                    pathcopy.append(territory)
+                    dictionary[territory] = dictionarycopy
+                    queue.append(territory)
+                visited.add(territory)
 
     def can_fortify(self, source, target):
         '''
-        At the end of a turn, a player may choose to fortify a target territory by moving armies from a source territory.
-        In order for this to be a valid move,
-        there must be a valid path between the source and target territories that is owned entirely by the same player.
-
-        Args:
-            source (int): the source t_id
-            target (int): the target t_id
-
-        Returns:
-            bool: True if reinforcing the target from the source territory is a valid move
         '''
+        dictionary = {}
+        dictionary[source] = [source]
+        queue = deque()
+        queue.append(source)
+        visited = set()
+        visited.add(source)
+
+        while queue:
+            now = queue.popleft()
+            if now == target:
+                return True
+
+            for territory in risk.definitions.territory_neighbors[current]:
+                if territory in visited or self.owner(territory) != self.owner(source):
+                    continue
+                new = path[current] + [territory]
+                if territory in path and len(temp_dict) >= len(path[territory]):
+                    continue
+                path[territory] = new
+                queue.append(territory)
+            visited.add(current)
+        return False
 
 
     def cheapest_attack_path(self, source, target):
         '''
-        This function uses Dijkstra's algorithm to calculate a cheapest valid attack path between two territories if such a path exists.
-        There may be multiple valid cheapest attack paths (in which case it doesn't matter which this function returns),
-        or there may be no valid attack paths (in which case the function returns None).
-
-        Args:
-            source (int): t_id of source node
-            target (int): t_id of target node
-
-        Returns:
-            [int]: a list of t_ids representing the valid attack path; if no path exists, then it returns None instead
         '''
+        dictionary = {}
+        dictionary[source] = [source]
+        queue = deque()
+        queue.append(source)
+        visited = set()
+        visited.add(source)
+        p_q = PriorityQueue()
+        p_q.put((0, source))
 
+        while not p_q.empty():
+            current_priority, current_territory = p_q.get()
+            if current_territory == target:
+                return dictionary[current_territory]
+            n_current_t = risk.definitions.territory_neighbors[current_territory]
+            for t in n_current_t:
+                if t not in visited and sourceowner != self.owner(t):
+                    dcopy = dictionary[current_territory].copy()
+                    dcopy.append(t)
+                    priority = current_priority + self.data[ter].armies
+                    pr = priority
+                    t = ter
+                    if ter not in [x[1] for x in p_q.queue]:
+                        dictionary[ter] = dictionarycopy
+                        p_q.put((priority, ter))
+                    elif pr < min([x[0] for x in p_q.queue if x[1] == t]):
+                        dictionary[ter] = dcopy
+                        for i, (pr, t) in enumerate(p_q.queue):
+                            if t == ter:
+                                p_q[i] = (priority, ter)
+                                break
+            visited.add(current_territory) 
 
     def can_attack(self, source, target):
         '''
-        Args:
-            source (int): t_id of source node
-            target (int): t_id of target node
 
-        Returns:
-            bool: True if a valid attack path exists between source and target; else False
         '''
 
+        owner = self.owner(source)
+        if owner == self.owner(target):
+            return False
 
+        dictionary = {}
+        dictionary[source] = [source]
+        queue = deque()
+        queue.append(source)
+        visited = set()
+        visited.add(source)
+
+        while :
+            current_territory = queue.popleft()
+            if current_territory == target:
+                return True
+            n_current_ter = risk.definitions.territory_neighbors[current_territory]
+            for ter in n_current_ter:
+                if ter not in visited and self.owner(ter) != sourceowner:
+                    visited.add(ter)
+                    dictionarycopy = copy.copy(dictionary[current_territory])
+                    dictionarycopy.append(ter)
+                    dictionary[ter] = dictionarycopy
+                    queue.append(ter)
+        return False
 
     # ======================= #
     # == Continent Methods == #
