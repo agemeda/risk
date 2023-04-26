@@ -78,7 +78,7 @@ class Board(object):
             else:
                 val &= path[0] not in path[1:]
                 val &= path[1] in risk.definitions.territory_neighbors[path[0]]
-                val &= self.is-valid-path(path[1:])
+                val &= self.is_valid_path(path[1:])
                 return val
     
     def is_valid_attack_path(self, path):
