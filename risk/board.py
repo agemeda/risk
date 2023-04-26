@@ -124,7 +124,7 @@ class Board(object):
         val = 0
         for tid in path[1:]:
             val += self.data[tid].armies
-            return val
+        return val
 
     def shortest_path(self, source, target):
         '''
@@ -150,15 +150,11 @@ class Board(object):
                     dictionary[territory] = dcopy
                     queue.append(territory)
 
-            return None
+        return None
 
     def can_fortify(self, source, target):
         '''
         '''
-        owner = self.owner(source)
-        if source != self.owner(target):
-            return False
-
         dictionary = {}
         dictionary[source] = [source]
         queue = deque()
@@ -170,16 +166,14 @@ class Board(object):
             current_territory = queue.popleft()
             if current_territory == target:
                 return True
-
-            move = risk.definitions.territory_neighbors[current_territory]
-            for territory in move:
-                if territory not in visited and self.owner(territory) == owner:
-                    visited.add(territory)
-                    dcopy = copy.copy(dictionary[current_territory])
+            space = [territory.territory_id for territory in self.friendly_neighbors(current_territory)]
+            for territory in space:
+                if territory not in visited:
+                    dcopy = copy.deepcopy(dictionary[current_territory])
                     dcopy.append(territory)
                     dictionary[territory] = dcopy
                     queue.append(territory)
-
+                visited.add(territory)
         return False
 
     def cheapest_attack_path(self, source, target):
@@ -196,7 +190,7 @@ class Board(object):
 
         owner = self.owner(source)
         if owner == self.owner(target):
-            return False
+            return None
 
         while not p_q.empty():
             current_priority, current_territory = p_q.get()
