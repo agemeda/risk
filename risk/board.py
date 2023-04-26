@@ -12,8 +12,8 @@ from collections import deque
 from queue import PriorityQueue
 import copy
 
-Territory = namedtuple('Territory', ['t_id', 'p_id', 'armies'])
-Move = namedtuple('Attack', ['from_t_id', 'from_armies', 'to_t_id', 'to_p_id', 'to_armies'])
+Territory = namedtuple('Territory', ['territory_id', 'player_id', 'armies'])
+Move = namedtuple('Attack', ['from_territory_id', 'from_armies', 'to_territory_id', 'to_player_id', 'to_armies'])
 
 
 class Board(object):
@@ -30,7 +30,7 @@ class Board(object):
         """
         allocation = (list(range(n_players)) * 42)[0:42]
         random.shuffle(allocation)
-        return cls([Territory(t_id=tid, p_id=pid, armies=1) for tid, pid in enumerate(allocation)])
+        return cls([Territory(territory_id=t_id, player_id=p_id, armies=1) for t_id, p_id in enumerate(allocation)])
 
     # ====================== #
     # == Neighbor Methods == #
@@ -70,35 +70,31 @@ class Board(object):
     def is_valid_path(self, path):
         '''
         '''
-
         val = True
-        for i in path:
-            if not i:
-                return True
-            else:
-                val &= path[0] not in path[1:]
-                val &= path[1] in risk.definitions.territory_neighbors[path[0]]
-                val &= self.is_valid_path(path[1:])
-                return val
+        if len(path) <= 1:
+            return val
+        val &= path[0] not in path[1:]
+        val &= path[1] in risk.definitions.territory_neighbors[path[0]]
+        val &= self.is_valid_path(path[1:])
+        return val
     
     def is_valid_attack_path(self, path):
         '''
         '''
-        val = self.is_valid_path(path)
-        if len(path) < 2:
+        if not self.is_valid_path(path) or len(path) < 2:
             return False
         else:
-            for i in path[1:]:
-                val &= self.owner(t_id) != self.owner(path[0])
-            return val
+            for i in range(len(path) - 1):
+                if self.owner(path[0]) == self.owner(path[i+1]):
+                    return False
+        return True
 
 
     def cost_of_attack_path(self, path):
         '''
         '''
-    val = 0
-
     if self.is_valid_attack_path(path) is True:
+        val = 0
         for t_id in path[1:]:
             val += self.data[t_id].armies
         return val
@@ -115,12 +111,12 @@ class Board(object):
         visited.add(source)
         
         while queue:
-            current_territory = queue.popleft()
-            if current_territory == target:
-                return dictionary[current_territory]
-            for territory in risk.definitions.territory_neighbors[current_territory]:
+            now_ter = queue.popleft()
+            if now_ter == target:
+                return dictionary[now_ter]
+            for territory in risk.definitions.territory_neighbors[now_ter]:
                 if territory not in visited:
-                    pathcopy = copy.deepcopy(dictionary[current_territory])
+                    pathcopy = copy.deepcopy(dictionary[now_ter])
                     pathcopy.append(territory)
                     dictionary[territory] = dictionarycopy
                     queue.append(territory)
@@ -166,17 +162,17 @@ class Board(object):
         p_q.put((0, source))
 
         while not p_q.empty():
-            current_priority, current_territory = p_q.get()
-            if current_territory == target:
-                return dictionary[current_territory]
-            n_current_t = risk.definitions.territory_neighbors[current_territory]
-            for t in n_current_t:
+            current_priority, now_ter = p_q.get()
+            if now_ter == target:
+                return dictionary[now_ter]
+            n_ter = risk.definitions.territory_neighbors[now_ter]
+            for t in n_ter:
                 if t not in visited and sourceowner != self.owner(t):
-                    dcopy = dictionary[current_territory].copy()
+                    dcopy = dictionary[now_ter].copy()
                     dcopy.append(t)
                     priority = current_priority + self.data[ter].armies
                     pr = priority
-                    t = ter
+                    ter = t
                     if ter not in [x[1] for x in p_q.queue]:
                         dictionary[ter] = dictionarycopy
                         p_q.put((priority, ter))
@@ -186,7 +182,7 @@ class Board(object):
                             if t == ter:
                                 p_q[i] = (priority, ter)
                                 break
-            visited.add(current_territory) 
+            visited.add(now_ter) 
 
     def can_attack(self, source, target):
         '''
@@ -204,15 +200,15 @@ class Board(object):
         visited = set()
         visited.add(source)
 
-        while :
-            current_territory = queue.popleft()
-            if current_territory == target:
+        while queue:
+            now_ter = queue.popleft()
+            if now_ter == target:
                 return True
-            n_current_ter = risk.definitions.territory_neighbors[current_territory]
-            for ter in n_current_ter:
+            n_ter = risk.definitions.territory_neighbors[now_ter]
+            for ter in n_ter:
                 if ter not in visited and self.owner(ter) != sourceowner:
                     visited.add(ter)
-                    dictionarycopy = copy.copy(dictionary[current_territory])
+                    dictionarycopy = copy.copy(dictionary[now_ter])
                     dictionarycopy.append(ter)
                     dictionary[ter] = dictionarycopy
                     queue.append(ter)
