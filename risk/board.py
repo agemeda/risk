@@ -97,7 +97,7 @@ class Board(object):
         val = 0
         for t_id in path[1:]:
             val += self.data[t_id].armies
-        return val
+            return val
 
     def shortest_path(self, source, target):
         '''
@@ -116,9 +116,9 @@ class Board(object):
                 return dictionary[now_ter]
             for territory in risk.definitions.territory_neighbors[now_ter]:
                 if territory not in visited:
-                    pathcopy = copy.deepcopy(dictionary[now_ter])
-                    pathcopy.append(territory)
-                    dictionary[territory] = dictionarycopy
+                    dcopy = copy.deepcopy(dictionary[now_ter])
+                    dcopy.append(territory)
+                    dictionary[territory] = dcopy
                     queue.append(territory)
                 visited.add(territory)
 
@@ -167,14 +167,14 @@ class Board(object):
                 return dictionary[now_ter]
             n_ter = risk.definitions.territory_neighbors[now_ter]
             for t in n_ter:
-                if t not in visited and sourceowner != self.owner(t):
+                if t not in visited and owner != self.owner(t):
                     dcopy = dictionary[now_ter].copy()
                     dcopy.append(t)
-                    priority = current_priority + self.data[ter].armies
+                    priority = current_priority + self.data[t].armies
                     pr = priority
                     ter = t
                     if ter not in [x[1] for x in p_q.queue]:
-                        dictionary[ter] = dictionarycopy
+                        dictionary[ter] = dcopy
                         p_q.put((priority, ter))
                     elif pr < min([x[0] for x in p_q.queue if x[1] == t]):
                         dictionary[ter] = dcopy
@@ -206,11 +206,11 @@ class Board(object):
                 return True
             n_ter = risk.definitions.territory_neighbors[now_ter]
             for ter in n_ter:
-                if ter not in visited and self.owner(ter) != sourceowner:
+                if ter not in visited and self.owner(ter) != owner:
                     visited.add(ter)
-                    dictionarycopy = copy.copy(dictionary[now_ter])
-                    dictionarycopy.append(ter)
-                    dictionary[ter] = dictionarycopy
+                    dcopy = copy.copy(dictionary[now_ter])
+                    dcopy.append(ter)
+                    dictionary[ter] = dcopy
                     queue.append(ter)
         return False
 
@@ -266,9 +266,9 @@ class Board(object):
         Returns:
             int/None: Player_id if a player owns all territories, else None.
         """
-        pids = set([t.p_id for t in self.continent(continent_id)])
-        if len(pids) == 1:
-            return pids.pop()
+        p_ids = set([t.p_id for t in self.continent(continent_id)])
+        if len(p_ids) == 1:
+            return p_ids.pop()
         return None
 
     def continent_fraction(self, continent_id, p_id):
@@ -360,8 +360,8 @@ class Board(object):
             ValueError if the territories do not share a border or are not owned by the same player.
         """
         if n_armies < 0 or self.armies(from_territory) <= n_armies:
-            raise ValueError('Board: Cannot move {n} armies from territory {tid}.'
-                             .format(n=n_armies, tid=from_territory))
+            raise ValueError('Board: Cannot move {n} armies from territory {t_id}.'
+                             .format(n=n_armies, t_id=from_territory))
         if to_territory not in [t.t_id for t in self.friendly_neighbors(from_territory)]:
             raise ValueError('Board: Cannot fortify, territories do not share owner and/or border.')
         self.add_armies(from_territory, -n_armies)
@@ -384,9 +384,9 @@ class Board(object):
             bool: True if the defensive territory was conquered, False otherwise.
         """
         if attackers < 1 or self.armies(from_territory) <= attackers:
-            raise ValueError('Board: Cannot attack with {n} armies from territory {tid}.'
-                             .format(n=attackers, tid=from_territory))
-        if to_territory not in [tid for (tid, _, _) in self.hostile_neighbors(from_territory)]:
+            raise ValueError('Board: Cannot attack with {n} armies from territory {t_id}.'
+                             .format(n=attackers, t_id=from_territory))
+        if to_territory not in [t_id for (t_id, _, _) in self.hostile_neighbors(from_territory)]:
             raise ValueError('Board: Cannot attack, territories do not share border or are owned by the same player.')
         defenders = self.armies(to_territory)
         def_wins, att_wins = self.fight(attackers, defenders)
@@ -488,13 +488,13 @@ class Board(object):
             coor[1]*1.22 + 15, 
             s=str(armies),
             color='black' if risk.definitions.player_colors[p_id] in ['yellow', 'pink'] else 'white',
-            ha='center', 
+            ha='center',
             size=15
             )
 
     # ==================== #
     # == Combat Methods == #
-    # ==================== #    
+    # ==================== #  
 
     @classmethod
     def fight(cls, attackers, defenders):
@@ -518,10 +518,7 @@ class Board(object):
     @staticmethod
     def throw_dice():
         """
-        Throw a dice.
-        
-        Returns:
-            int: random int in [1, 6]. """
+        """
         return random.randint(1, 6)
 
     # ======================= #
@@ -574,68 +571,30 @@ class Board(object):
             ValueError if n < 1.
         """
         if n < 1:
-            raise ValueError('Board: cannot set the number of armies to <1 ({tid}, {n}).'.format(tid=t_id, n=n))
+            raise ValueError('Board: cannot set the number of armies to <1 ({t_id}, {n}).'.format(t_id=t_id, n=n))
         self.data[t_id] = Territory(t_id, self.owner(t_id), n)
 
     def add_armies(self, t_id, n):
         """
-        Add (or remove) armies to/from the territory.
-
-        Args:
-            t_id (int): ID of the territory.
-            n (int): Number of armies to add to the territory.
-
-        Raises:
-            ValueError if the resulting number of armies is <1.
         """
         self.set_armies(t_id, self.armies(t_id) + n)
 
     def n_armies(self, p_id):
         """
-        Count the total number of armies owned by a player.
-
-        Args:
-            p_id (int): ID of the player.
-
-        Returns:
-            int: Number of armies owned by the player.
         """
         return sum((t.armies for t in self.data if t.p_id == p_id))
 
     def n_territories(self, p_id):
         """
-        Count the total number of territories owned by a player.
-
-        Args:
-            p_id (int): ID of the player.
-
-        Returns:
-            int: Number of territories owned by the player.
         """
         return len([None for t in self.data if t.p_id == p_id])
 
     def territories_of(self, p_id):
         """
-        Return a set of all territories owned by the player.
-
-        Args:
-            p_id (int): ID of the player.
-
-        Returns:
-            list: List of all territory IDs owner by the player.
         """
         return [t.t_id for t in self.data if t.p_id == p_id]
 
-
     def mobile(self, p_id):
         """
-        Create a generator of all territories of a player which can attack or move,
-        i.e. that have more than one army.
-
-        Args:
-            p_id (int): ID of the attacking player.
-
-        Returns:
-            generator: Generator of Territories.
         """
         return (t for t in self.data if (t.p_id == p_id and t.armies > 1))
