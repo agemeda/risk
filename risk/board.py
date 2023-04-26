@@ -93,11 +93,11 @@ class Board(object):
     def cost_of_attack_path(self, path):
         '''
         '''
-    if self.is_valid_attack_path(path) is True:
-        val = 0
-        for t_id in path[1:]:
-            val += self.data[t_id].armies
-            return val
+        if self.is_valid_attack_path(path) is True:
+            val = 0
+            for t_id in path[1:]:
+                val += self.data[t_id].armies
+                return val
 
     def shortest_path(self, source, target):
         '''
@@ -125,6 +125,7 @@ class Board(object):
     def can_fortify(self, source, target):
         '''
         '''
+
         dictionary = {}
         dictionary[source] = [source]
         queue = deque()
@@ -133,21 +134,17 @@ class Board(object):
         visited.add(source)
 
         while queue:
-            now = queue.popleft()
-            if now == target:
+            now_ter = queue.popleft()
+            if now_ter == target:
                 return True
-
-            for territory in risk.definitions.territory_neighbors[current]:
-                if territory in visited or self.owner(territory) != self.owner(source):
-                    continue
-                new = path[current] + [territory]
-                if territory in path and len(temp_dict) >= len(path[territory]):
-                    continue
-                path[territory] = new
-                queue.append(territory)
-            visited.add(current)
-        return False
-
+            n = risk.definitions.territory_neighbors[now_ter]
+            for territory in n:
+                if territory not in visited and self.owner(territory) == owner:
+                    visited.add(territory)
+                    copy_of_path = copy.copy(dictionary[now_ter])
+                    copy_of_path.append(territory)
+                    dictionary[territory] = copy_of_path
+                    queue.append(territory)
 
     def cheapest_attack_path(self, source, target):
         '''
