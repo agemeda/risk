@@ -112,23 +112,19 @@ class Board(object):
     def is_valid_attack_path(self, path):
         '''
         '''
-        if not self.is_valid_path(path) or len(path) < 2:
-            return False
-        else:
-            for i in range(len(path) - 1):
-                if self.owner(path[0]) == self.owner(path[i+1]):
-                    return False
-        return True
-
+        val = self.is_valid_path(path)
+        val &= len(path) > 1
+        for tid in path[1:]:
+            val &= self.owner(tid) != self.owner(path[0])
+        return val
 
     def cost_of_attack_path(self, path):
         '''
         '''
-        if self.is_valid_attack_path(path) is True:
-            val = 0
-            for tid in path[1:]:
-                val += self.data[tid].armies
-                return val
+        val = 0
+        for tid in path[1:]:
+            val += self.data[tid].armies
+            return val
 
     def shortest_path(self, source, target):
         '''
@@ -142,16 +138,19 @@ class Board(object):
         visited.add(source)
         
         while queue:
-            now_ter = queue.popleft()
-            if now_ter == target:
-                return dictionary[now_ter]
-            for territory in risk.definitions.territory_neighbors[now_ter]:
+            current_territory = queue.popleft()
+            if current_territory == target:
+                return dictionary[current_territory]
+            space = risk.definitions.territory_neighbors[current_territory]
+            for territory in space:
                 if territory not in visited:
-                    dcopy = copy.deepcopy(dictionary[now_ter])
+                    visited.add(territory)
+                    dcopy = copy.deepcopy(dictionary[current_territory])
                     dcopy.append(territory)
                     dictionary[territory] = dcopy
                     queue.append(territory)
-                visited.add(territory)
+
+            return None
 
     def can_fortify(self, source, target):
         '''
@@ -168,19 +167,20 @@ class Board(object):
         visited.add(source)
 
         while queue:
-            now_ter = queue.popleft()
-            if now_ter == target:
+            current_territory = queue.popleft()
+            if current_territory == target:
                 return True
 
-            move = risk.definitions.territory_neighbors[now_ter]
+            move = risk.definitions.territory_neighbors[current_territory]
             for territory in move:
                 if territory not in visited and self.owner(territory) == owner:
                     visited.add(territory)
-                    pcopy = copy.copy(dictionary[now_ter])
-                    pcopy.append(territory)
-                    dictionary[territory] = pcopy
+                    dcopy = copy.copy(dictionary[current_territory])
+                    dcopy.append(territory)
+                    dictionary[territory] = dcopy
                     queue.append(territory)
-            return False
+
+        return False
 
     def cheapest_attack_path(self, source, target):
         '''
@@ -199,13 +199,13 @@ class Board(object):
             return False
 
         while not p_q.empty():
-            current_priority, now_ter = p_q.get()
-            if now_ter == target:
-                return dictionary[now_ter]
-            n_ter = risk.definitions.territory_neighbors[now_ter]
-            for t in n_ter:
+            current_priority, current_territory = p_q.get()
+            if current_territory == target:
+                return dictionary[current_territory]
+            space = risk.definitions.territory_neighbors[current_territory]
+            for t in space:
                 if t not in visited and owner != self.owner(t):
-                    dcopy = dictionary[now_ter].copy()
+                    dcopy = dictionary[current_territory].copy()
                     dcopy.append(t)
                     priority = current_priority + self.data[t].armies
                     pr = priority
@@ -219,7 +219,7 @@ class Board(object):
                             if t == ter:
                                 p_q[i] = (priority, ter)
                                 break
-            visited.add(now_ter) 
+            visited.add(current_territory) 
 
     def can_attack(self, source, target):
         '''
@@ -238,14 +238,14 @@ class Board(object):
         visited.add(source)
 
         while queue:
-            now_ter = queue.popleft()
-            if now_ter == target:
+            current_territory = queue.popleft()
+            if current_territory == target:
                 return True
-            n_ter = risk.definitions.territory_neighbors[now_ter]
-            for ter in n_ter:
+            space = risk.definitions.territory_neighbors[current_territory]
+            for ter in space:
                 if ter not in visited and self.owner(ter) != owner:
                     visited.add(ter)
-                    dcopy = copy.copy(dictionary[now_ter])
+                    dcopy = copy.copy(dictionary[current_territory])
                     dcopy.append(ter)
                     dictionary[ter] = dcopy
                     queue.append(ter)
